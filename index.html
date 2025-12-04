@@ -4,6 +4,9 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="theme-color" content="#ef4444">
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <meta name="apple-mobile-web-app-capable" content="yes">
   <title>Focus Pomo Timer</title>
   <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -28,7 +31,7 @@
     const [breakTime, setBreakTime] = useState(5);
     const [showSettings, setShowSettings] = useState(false);
     const [showCelebration, setShowCelebration] = useState(false);
-    const [soundStyle, setSoundStyle] = useState('default'); // default, bell, chime, zen, custom
+    const [soundStyle, setSoundStyle] = useState('default');
     const [customStartSound, setCustomStartSound] = useState(null);
     const [customCompleteSound, setCustomCompleteSound] = useState(null);
     const canvasRef = useRef(null);
@@ -41,7 +44,6 @@
     const totalTime = isBreak ? breakTime * 60 : focusTime * 60;
     const progress = ((totalTime - timeLeft) / totalTime) * 100;
 
-    // Initialize audio
     useEffect(() => {
       audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
     }, []);
@@ -54,7 +56,6 @@
     };
 
     const playSound = (type) => {
-      // Play custom uploaded sounds if available
       if (type === 'start' && customStartSound) {
         playCustomSound(customStartSound);
         return;
@@ -67,10 +68,8 @@
       const audioContext = audioContextRef.current;
       if (!audioContext) return;
 
-      // Different sound styles
       if (type === 'start') {
         if (soundStyle === 'bell') {
-          // Bell sound
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
           osc.connect(gain);
@@ -82,7 +81,6 @@
           osc.start(audioContext.currentTime);
           osc.stop(audioContext.currentTime + 0.5);
         } else if (soundStyle === 'chime') {
-          // Chime sound
           [523.25, 659.25].forEach((freq, i) => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -96,7 +94,6 @@
             osc.stop(audioContext.currentTime + i * 0.1 + 0.4);
           });
         } else if (soundStyle === 'zen') {
-          // Zen/meditation sound
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
           osc.connect(gain);
@@ -108,7 +105,6 @@
           osc.start(audioContext.currentTime);
           osc.stop(audioContext.currentTime + 1.0);
         } else {
-          // Default beep
           const osc = audioContext.createOscillator();
           const gain = audioContext.createGain();
           osc.connect(gain);
@@ -121,7 +117,6 @@
         }
       } else if (type === 'complete') {
         if (soundStyle === 'bell') {
-          // Bell celebration
           [659.25, 783.99, 987.77, 1174.66, 1318.51].forEach((freq, i) => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -135,7 +130,6 @@
             osc.stop(audioContext.currentTime + i * 0.2 + 0.6);
           });
         } else if (soundStyle === 'chime') {
-          // Wind chime celebration
           [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -149,7 +143,6 @@
             osc.stop(audioContext.currentTime + i * 0.15 + 0.5);
           });
         } else if (soundStyle === 'zen') {
-          // Zen bowl sound
           [256, 384, 512].forEach((freq, i) => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -163,7 +156,6 @@
             osc.stop(audioContext.currentTime + i * 0.3 + 1.5);
           });
         } else {
-          // Default celebration
           [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
             const osc = audioContext.createOscillator();
             const gain = audioContext.createGain();
@@ -201,7 +193,6 @@
       }, 4000);
     };
 
-    // Timer logic
     useEffect(() => {
       if (isRunning && timeLeft > 0) {
         const timer = setTimeout(() => {
@@ -221,7 +212,6 @@
       }
     }, [isRunning, timeLeft, isBreak, focusTime, breakTime]);
 
-    // Canvas animation
     useEffect(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -406,7 +396,7 @@
           e('div', { className: 'text-center animate-bounce' },
             e('div', { className: 'text-8xl mb-4' }, '🎉'),
             e('div', { className: 'text-4xl font-bold text-white drop-shadow-lg' },
-              isBreak ? 'nice!' : 'lock in sesh completed twin!'
+              isBreak ? 'Break Complete!' : 'Focus Session Complete!'
             ),
             e('div', { className: 'text-2xl text-white drop-shadow-lg mt-2' }, 'Great job! 🌟')
           )
@@ -414,7 +404,7 @@
         e('div', { className: 'bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 max-w-md w-full' },
           e('div', { className: 'flex items-center justify-between mb-6' },
             e('h1', { className: 'text-2xl font-bold text-gray-800' },
-              isBreak ? '☕ breaky wakey' : '🎯 LOCK IN BRUH
+              isBreak ? '☕ Break Time' : '🎯 Focus Time'
             ),
             e('button', { onClick: () => setShowSettings(!showSettings), className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' }, '⚙️')
           ),
@@ -475,7 +465,7 @@
               e('div', { className: 'text-center' },
                 e('div', { className: 'text-6xl font-bold text-gray-800 mb-2' }, formatTime(timeLeft)),
                 e('p', { className: 'text-gray-600' },
-                  isBreak ? 'Take a break, you earned it!' : 'lock in lock in!'
+                  isBreak ? 'Take a break, you earned it!' : 'Stay focused, you got this!'
                 )
               )
             )
