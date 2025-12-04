@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#ef4444">
+  <title>Focus Pomo Timer</title>
+  <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { margin: 0; overflow: hidden; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  
+<script>
+  const { useState, useEffect, useRef, createElement: e } = React;
+  const { createRoot } = ReactDOM;
+
+  function FocusPomoTimer() {
+    const [timeLeft, setTimeLeft] = useState(25 * 60);
+    const [isRunning, setIsRunning] = useState(false);
+    const [isBreak, setIsBreak] = useState(false);
+    const [customImage, setCustomImage] = useState(null);
+    const [focusTime, setFocusTime] = useState(25);
+    const [breakTime, setBreakTime] = useState(5);
+    const [showSettings, setShowSettings] = useState(false);
+    const [showCelebration, setShowCelebration] = useState(false);
+    const [soundStyle, setSoundStyle] = useState('default'); // default, bell, chime, zen, custom
+    const [customStartSound, setCustomStartSound] = useState(null);
+    const [customCompleteSound, setCustomCompleteSound] = useState(null);
+    const canvasRef = useRef(null);
+    const animationRef = useRef(null);
+    const itemsRef = useRef([]);
+    const confettiRef = useRef([]);
+    const itemIdCounter = useRef(0);
+    const audioContextRef = useRef(null);
+
+    const totalTime = isBreak ? breakTime * 60 : focusTime * 60;
+    const progress = ((totalTime - timeLeft) / totalTime) * 100;
+
+    // Initialize audio
+    useEffect(() => {
+      audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+    }, []);
+
+    const playCustomSound = (audioSrc) => {
+      if (!audioSrc) return;
+      const audio = new Audio(audioSrc);
+      audio.volume = 0.5;
+      audio.play().catch(err => console.log('Audio play failed:', err));
+    };
+
+    const playSound = (type) => {
+      // Play custom uploaded sounds if available
+      if (type === 'start' && customStartSound) {
+        playCustomSound(customStartSound);
+        return;
+      }
+      if (type === 'complete' && customCompleteSound) {
+        playCustomSound(customCompleteSound);
+        return;
+      }
+
+      const audioContext = audioContextRef.current;
+      if (!audioContext) return;
+
+      // Different sound styles
+      if (type === 'start') {
+        if (soundStyle === 'bell') {
+          // Bell sound
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.frequency.value = 800;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.3, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.5);
+        } else if (soundStyle === 'chime') {
+          // Chime sound
+          [523.25, 659.25].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.1);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.1 + 0.4);
+            osc.start(audioContext.currentTime + i * 0.1);
+            osc.stop(audioContext.currentTime + i * 0.1 + 0.4);
+          });
+        } else if (soundStyle === 'zen') {
+          // Zen/meditation sound
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.frequency.value = 256;
+          osc.type = 'sine';
+          gain.gain.setValueAtTime(0.15, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 1.0);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 1.0);
+        } else {
+          // Default beep
+          const osc = audioContext.createOscillator();
+          const gain = audioContext.createGain();
+          osc.connect(gain);
+          gain.connect(audioContext.destination);
+          osc.frequency.value = 440;
+          gain.gain.setValueAtTime(0.2, audioContext.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+          osc.start(audioContext.currentTime);
+          osc.stop(audioContext.currentTime + 0.2);
+        }
+      } else if (type === 'complete') {
+        if (soundStyle === 'bell') {
+          // Bell celebration
+          [659.25, 783.99, 987.77, 1174.66, 1318.51].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.25, audioContext.currentTime + i * 0.2);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.2 + 0.6);
+            osc.start(audioContext.currentTime + i * 0.2);
+            osc.stop(audioContext.currentTime + i * 0.2 + 0.6);
+          });
+        } else if (soundStyle === 'chime') {
+          // Wind chime celebration
+          [523.25, 659.25, 783.99, 1046.50, 1318.51].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'triangle';
+            gain.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.5);
+            osc.start(audioContext.currentTime + i * 0.15);
+            osc.stop(audioContext.currentTime + i * 0.15 + 0.5);
+          });
+        } else if (soundStyle === 'zen') {
+          // Zen bowl sound
+          [256, 384, 512].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            osc.type = 'sine';
+            gain.gain.setValueAtTime(0.2, audioContext.currentTime + i * 0.3);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.3 + 1.5);
+            osc.start(audioContext.currentTime + i * 0.3);
+            osc.stop(audioContext.currentTime + i * 0.3 + 1.5);
+          });
+        } else {
+          // Default celebration
+          [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+            const osc = audioContext.createOscillator();
+            const gain = audioContext.createGain();
+            osc.connect(gain);
+            gain.connect(audioContext.destination);
+            osc.frequency.value = freq;
+            gain.gain.setValueAtTime(0.3, audioContext.currentTime + i * 0.15);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + i * 0.15 + 0.3);
+            osc.start(audioContext.currentTime + i * 0.15);
+            osc.stop(audioContext.currentTime + i * 0.15 + 0.3);
+          });
+        }
+      }
+    };
+
+    const triggerCelebration = () => {
+      setShowCelebration(true);
+      playSound('complete');
+      
+      confettiRef.current = Array.from({ length: 50 }, (_, i) => ({
+        id: i,
+        x: Math.random() * window.innerWidth,
+        y: -20,
+        velocityX: (Math.random() - 0.5) * 10,
+        velocityY: Math.random() * 5 + 5,
+        rotation: Math.random() * 360,
+        rotationSpeed: (Math.random() - 0.5) * 10,
+        color: ['#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899'][Math.floor(Math.random() * 6)],
+        size: Math.random() * 10 + 5
+      }));
+
+      setTimeout(() => {
+        setShowCelebration(false);
+        confettiRef.current = [];
+      }, 4000);
+    };
+
+    // Timer logic
+    useEffect(() => {
+      if (isRunning && timeLeft > 0) {
+        const timer = setTimeout(() => {
+          setTimeLeft(timeLeft - 1);
+        }, 1000);
+        return () => clearTimeout(timer);
+      } else if (isRunning && timeLeft === 0) {
+        setIsRunning(false);
+        triggerCelebration();
+        if (!isBreak) {
+          setIsBreak(true);
+          setTimeLeft(breakTime * 60);
+        } else {
+          setIsBreak(false);
+          setTimeLeft(focusTime * 60);
+        }
+      }
+    }, [isRunning, timeLeft, isBreak, focusTime, breakTime]);
+
+    // Canvas animation
+    useEffect(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const ctx = canvas.getContext('2d');
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+
+      const animate = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        confettiRef.current = confettiRef.current.map(piece => {
+          piece.y += piece.velocityY;
+          piece.x += piece.velocityX;
+          piece.rotation += piece.rotationSpeed;
+          piece.velocityY += 0.3;
+
+          ctx.save();
+          ctx.translate(piece.x, piece.y);
+          ctx.rotate((piece.rotation * Math.PI) / 180);
+          ctx.fillStyle = piece.color;
+          ctx.fillRect(-piece.size / 2, -piece.size / 2, piece.size, piece.size);
+          ctx.restore();
+
+          return piece;
+        }).filter(piece => piece.y < canvas.height + 50);
+
+        itemsRef.current = itemsRef.current.map(item => {
+          item.velocityY += 0.5;
+          item.y += item.velocityY;
+          item.x += item.velocityX;
+          item.rotation += item.rotationSpeed;
+
+          if (item.y + item.size > canvas.height) {
+            item.y = canvas.height - item.size;
+            item.velocityY *= -0.6;
+            item.velocityX *= 0.95;
+          }
+
+          if (item.x < 0 || item.x + item.size > canvas.width) {
+            item.velocityX *= -1;
+            item.x = item.x < 0 ? 0 : canvas.width - item.size;
+          }
+
+          ctx.save();
+          ctx.translate(item.x + item.size / 2, item.y + item.size / 2);
+          ctx.rotate(item.rotation);
+
+          if (customImage && item.image && item.image.complete) {
+            ctx.drawImage(item.image, -item.size / 2, -item.size / 2, item.size, item.size);
+          } else {
+            ctx.font = `${item.size}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('🍅', 0, 0);
+          }
+
+          ctx.restore();
+
+          if (Math.abs(item.velocityY) < 0.1 && item.y >= canvas.height - item.size - 5) {
+            if (!item.settledTime) item.settledTime = Date.now();
+          }
+
+          return item;
+        }).filter(item => !item.settledTime || Date.now() - item.settledTime < 3000);
+
+        animationRef.current = requestAnimationFrame(animate);
+      };
+
+      animate();
+
+      const handleResize = () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      };
+      window.addEventListener('resize', handleResize);
+
+      return () => {
+        if (animationRef.current) {
+          cancelAnimationFrame(animationRef.current);
+        }
+        window.removeEventListener('resize', handleResize);
+      };
+    }, [customImage]);
+
+    useEffect(() => {
+      if (!isRunning) return;
+
+      const interval = setInterval(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        const newItem = {
+          id: itemIdCounter.current++,
+          x: Math.random() * (canvas.width - 60),
+          y: -60,
+          size: 40 + Math.random() * 20,
+          velocityY: 0,
+          velocityX: (Math.random() - 0.5) * 2,
+          rotation: Math.random() * Math.PI * 2,
+          rotationSpeed: (Math.random() - 0.5) * 0.1,
+          settledTime: null,
+          image: null
+        };
+
+        if (customImage) {
+          const img = new Image();
+          img.src = customImage;
+          newItem.image = img;
+        }
+
+        itemsRef.current.push(newItem);
+      }, 2000);
+
+      return () => clearInterval(interval);
+    }, [isRunning, customImage]);
+
+    const handleImageUpload = (ev) => {
+      const file = ev.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setCustomImage(event.target.result);
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleStartSoundUpload = (ev) => {
+      const file = ev.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setCustomStartSound(event.target.result);
+          setSoundStyle('custom');
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const handleCompleteSoundUpload = (ev) => {
+      const file = ev.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          setCustomCompleteSound(event.target.result);
+          setSoundStyle('custom');
+        };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    const toggleTimer = () => {
+      if (!isRunning) playSound('start');
+      setIsRunning(!isRunning);
+    };
+
+    const resetTimer = () => {
+      setIsRunning(false);
+      setTimeLeft(isBreak ? breakTime * 60 : focusTime * 60);
+      itemsRef.current = [];
+    };
+
+    const formatTime = (seconds) => {
+      const mins = Math.floor(seconds / 60);
+      const secs = seconds % 60;
+      return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+    const applySettings = () => {
+      setTimeLeft(focusTime * 60);
+      setIsBreak(false);
+      setIsRunning(false);
+      setShowSettings(false);
+      itemsRef.current = [];
+    };
+
+    return e('div', { className: 'relative w-full h-screen overflow-hidden bg-gradient-to-br from-red-50 to-orange-50' },
+      e('canvas', { ref: canvasRef, className: 'absolute inset-0 pointer-events-none' }),
+      e('div', { className: 'relative z-10 flex flex-col items-center justify-center h-full p-8' },
+        showCelebration && e('div', { className: 'absolute inset-0 flex items-center justify-center z-50 pointer-events-none' },
+          e('div', { className: 'text-center animate-bounce' },
+            e('div', { className: 'text-8xl mb-4' }, '🎉'),
+            e('div', { className: 'text-4xl font-bold text-white drop-shadow-lg' },
+              isBreak ? 'nice!' : 'lock in sesh completed twin!'
+            ),
+            e('div', { className: 'text-2xl text-white drop-shadow-lg mt-2' }, 'Great job! 🌟')
+          )
+        ),
+        e('div', { className: 'bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 max-w-md w-full' },
+          e('div', { className: 'flex items-center justify-between mb-6' },
+            e('h1', { className: 'text-2xl font-bold text-gray-800' },
+              isBreak ? '☕ breaky wakey' : '🎯 LOCK IN BRUH
+            ),
+            e('button', { onClick: () => setShowSettings(!showSettings), className: 'p-2 hover:bg-gray-100 rounded-full transition-colors' }, '⚙️')
+          ),
+          showSettings && e('div', { className: 'mb-6 p-4 bg-gray-50 rounded-xl space-y-4' },
+            e('div', null,
+              e('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 'Focus Time (minutes)'),
+              e('input', { type: 'number', value: focusTime, onChange: (ev) => setFocusTime(Math.max(1, parseInt(ev.target.value) || 1)), className: 'w-full px-3 py-2 border border-gray-300 rounded-lg', min: '1', max: '60' })
+            ),
+            e('div', null,
+              e('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 'Break Time (minutes)'),
+              e('input', { type: 'number', value: breakTime, onChange: (ev) => setBreakTime(Math.max(1, parseInt(ev.target.value) || 1)), className: 'w-full px-3 py-2 border border-gray-300 rounded-lg', min: '1', max: '30' })
+            ),
+            e('div', null,
+              e('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, '🔊 Sound Style'),
+              e('select', { 
+                value: soundStyle, 
+                onChange: (ev) => setSoundStyle(ev.target.value), 
+                className: 'w-full px-3 py-2 border border-gray-300 rounded-lg'
+              },
+                e('option', { value: 'default' }, '🎵 Default'),
+                e('option', { value: 'bell' }, '🔔 Bell'),
+                e('option', { value: 'chime' }, '🎐 Wind Chime'),
+                e('option', { value: 'zen' }, '🧘 Zen Bowl'),
+                e('option', { value: 'custom' }, '📤 Custom (upload below)')
+              )
+            ),
+            soundStyle === 'custom' && e('div', { className: 'space-y-3' },
+              e('div', null,
+                e('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 'Start Sound'),
+                e('label', { className: 'cursor-pointer bg-blue-500 text-white px-4 py-2 rounded-lg text-sm inline-block hover:bg-blue-600' },
+                  customStartSound ? '✓ Uploaded' : '📤 Upload Start Sound',
+                  e('input', { type: 'file', accept: 'audio/*', onChange: handleStartSoundUpload, className: 'hidden' })
+                )
+              ),
+              e('div', null,
+                e('label', { className: 'block text-sm font-medium text-gray-700 mb-2' }, 'Complete Sound'),
+                e('label', { className: 'cursor-pointer bg-green-500 text-white px-4 py-2 rounded-lg text-sm inline-block hover:bg-green-600' },
+                  customCompleteSound ? '✓ Uploaded' : '📤 Upload Complete Sound',
+                  e('input', { type: 'file', accept: 'audio/*', onChange: handleCompleteSoundUpload, className: 'hidden' })
+                )
+              )
+            ),
+            e('button', { 
+              onClick: () => playSound('start'), 
+              className: 'w-full bg-blue-500 text-white py-2 rounded-lg text-sm hover:bg-blue-600 mb-2' 
+            }, '🔊 Test Start Sound'),
+            e('button', { 
+              onClick: () => playSound('complete'), 
+              className: 'w-full bg-green-500 text-white py-2 rounded-lg text-sm hover:bg-green-600' 
+            }, '🔊 Test Complete Sound'),
+            e('button', { onClick: applySettings, className: 'w-full bg-gradient-to-r from-red-500 to-orange-500 text-white py-2 rounded-lg font-semibold hover:shadow-lg transition-shadow mt-2' }, 'Apply Settings')
+          ),
+          e('div', { className: 'mb-8' },
+            e('div', { className: 'relative' },
+              e('div', { className: 'w-full h-3 bg-gray-200 rounded-full overflow-hidden mb-4' },
+                e('div', { className: 'h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-1000', style: { width: `${progress}%` } })
+              ),
+              e('div', { className: 'text-center' },
+                e('div', { className: 'text-6xl font-bold text-gray-800 mb-2' }, formatTime(timeLeft)),
+                e('p', { className: 'text-gray-600' },
+                  isBreak ? 'Take a break, you earned it!' : 'lock in lock in!'
+                )
+              )
+            )
+          ),
+          e('div', { className: 'flex gap-3 mb-6' },
+            e('button', { onClick: toggleTimer, className: `flex-1 flex items-center justify-center gap-2 py-3 rounded-xl font-semibold transition-all ${isRunning ? 'bg-yellow-500 hover:bg-yellow-600 text-white' : 'bg-gradient-to-r from-red-500 to-orange-500 hover:shadow-lg text-white'}` },
+              isRunning ? '⏸️ Pause' : '▶️ Start'
+            ),
+            e('button', { onClick: resetTimer, className: 'px-6 py-3 bg-gray-200 hover:bg-gray-300 rounded-xl font-semibold transition-colors' }, '↻')
+          ),
+          e('div', { className: 'border-t pt-6' },
+            e('label', { className: 'flex items-center justify-center gap-2 cursor-pointer bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-shadow' },
+              '📤 ', customImage ? 'Change Image' : 'Upload Custom Image',
+              e('input', { type: 'file', accept: 'image/*', onChange: handleImageUpload, className: 'hidden' })
+            ),
+            customImage && e('p', { className: 'text-center text-sm text-gray-600 mt-2' }, '✓ Custom image loaded')
+          )
+        ),
+        e('p', { className: 'mt-6 text-sm text-gray-600 text-center max-w-md' },
+          customImage ? 'Your images' : 'Tomatoes', ' will fall as you stay focused! 🎉'
+        )
+      )
+    );
+  }
+
+  createRoot(document.getElementById('root')).render(e(FocusPomoTimer));
+</script>
+</body>
+</html>
